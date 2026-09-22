@@ -1,0 +1,6 @@
+PySide6>=6.6.0
+PySide6-Addons>=6.6.0
+ortools>=9.8
+folium>=0.15
+geopy>=2.4
+requests>=2.31
