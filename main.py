@@ -13,6 +13,18 @@ import sys
 import os
 import tempfile
 
+# IMPORTANTE: esto debe configurarse ANTES de crear QApplication y de que
+# QtWebEngine arranque su proceso interno de Chromium. En algunas PCs
+# (sobre todo con gráficos integrados Intel, o drivers de video
+# desactualizados) la aceleración por GPU hace que el mapa "cargue" pero
+# nunca se pinte en pantalla (queda en blanco). Forzamos renderizado por
+# software para evitar ese problema — es ligeramente más lento pero mucho
+# más compatible.
+os.environ.setdefault(
+    "QTWEBENGINE_CHROMIUM_FLAGS",
+    "--disable-gpu --disable-gpu-compositing --enable-software-rasterizer"
+)
+
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QLabel, QLineEdit, QPushButton, QTableWidget,
@@ -1431,6 +1443,10 @@ def main():
 
     logging.info("Iniciando aplicación...")
     logging.info(f"QTWEBENGINEPROCESS_PATH: {os.environ.get('QTWEBENGINEPROCESS_PATH', '(no definido)')}")
+
+    # Segundo respaldo: fuerza a Qt (no a Chromium, sino al widget que lo
+    # aloja) a usar un contexto OpenGL por software si el hardware falla.
+    QApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)
 
     app = QApplication(sys.argv)
     ventana = VentanaPrincipal()
