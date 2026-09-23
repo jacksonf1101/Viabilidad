@@ -561,8 +561,13 @@ class TabRutas(QWidget):
         self._mostrar_mapa(m)
 
     def _mostrar_mapa(self, mapa: folium.Map):
+        import logging
         tmp_path = os.path.join(tempfile.gettempdir(), "mapa_rutas.html")
         mapa.save(tmp_path)
+        logging.info(f"[Rutas] Cargando mapa desde: {tmp_path}")
+        self.mapa_view.loadFinished.connect(
+            lambda ok: logging.info(f"[Rutas] Carga de mapa {'exitosa' if ok else 'FALLIDA'}")
+        )
         self.mapa_view.load(f"file://{tmp_path}")
 
     def _fijar_deposito(self):
@@ -1266,9 +1271,13 @@ class TabSocial(QWidget):
         self._mostrar_mapa(m)
 
     def _mostrar_mapa(self, mapa: folium.Map):
-        import os, tempfile
+        import os, tempfile, logging
         tmp_path = os.path.join(tempfile.gettempdir(), "mapa_calor_social.html")
         mapa.save(tmp_path)
+        logging.info(f"[Social] Cargando mapa desde: {tmp_path}")
+        self.mapa_view.loadFinished.connect(
+            lambda ok: logging.info(f"[Social] Carga de mapa {'exitosa' if ok else 'FALLIDA'}")
+        )
         self.mapa_view.load(f"file://{tmp_path}")
 
     def _generar_mapa(self, tipo: str):
@@ -1397,9 +1406,36 @@ class VentanaPrincipal(QMainWindow):
 
 
 def main():
+    # Registro de errores en un archivo de texto junto al .exe, para poder
+    # diagnosticar problemas sin necesidad de una consola (la app corre en
+    # modo --windowed, así que no hay salida de terminal visible).
+    import logging
+    log_path = os.path.join(
+        os.path.dirname(os.path.abspath(sys.argv[0])), "error_log.txt"
+    )
+    logging.basicConfig(
+        filename=log_path,
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
+    def manejar_excepcion_no_capturada(tipo, valor, traceback_obj):
+        logging.error("Excepción no capturada:", exc_info=(tipo, valor, traceback_obj))
+        QMessageBox.critical(
+            None, "Error inesperado",
+            f"Ocurrió un error inesperado:\n\n{valor}\n\n"
+            f"Se guardó el detalle en:\n{log_path}"
+        )
+
+    sys.excepthook = manejar_excepcion_no_capturada
+
+    logging.info("Iniciando aplicación...")
+    logging.info(f"QTWEBENGINEPROCESS_PATH: {os.environ.get('QTWEBENGINEPROCESS_PATH', '(no definido)')}")
+
     app = QApplication(sys.argv)
     ventana = VentanaPrincipal()
     ventana.show()
+    logging.info("Ventana mostrada correctamente.")
     sys.exit(app.exec())
 
 
