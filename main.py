@@ -13,18 +13,6 @@ import sys
 import os
 import tempfile
 
-# IMPORTANTE: esto debe configurarse ANTES de crear QApplication y de que
-# QtWebEngine arranque su proceso interno de Chromium. En algunas PCs
-# (sobre todo con gráficos integrados Intel, o drivers de video
-# desactualizados) la aceleración por GPU hace que el mapa "cargue" pero
-# nunca se pinte en pantalla (queda en blanco). Forzamos renderizado por
-# software para evitar ese problema — es ligeramente más lento pero mucho
-# más compatible.
-os.environ.setdefault(
-    "QTWEBENGINE_CHROMIUM_FLAGS",
-    "--disable-gpu --disable-gpu-compositing --enable-software-rasterizer"
-)
-
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QLabel, QLineEdit, QPushButton, QTableWidget,
@@ -33,7 +21,7 @@ from PySide6.QtWidgets import (
     QCheckBox, QFileDialog
 )
 from PySide6.QtCore import Qt
-from PySide6.QtWebEngineWidgets import QWebEngineView
+import webbrowser
 
 from modules.generation import (
     ProyectoGeneracion, ZonaResidencial, ZonaComercial, ZonaIndustrial
@@ -558,29 +546,52 @@ class TabRutas(QWidget):
         panel_izq_widget = QWidget()
         panel_izq_widget.setLayout(panel_izq)
 
-        # --- Panel derecho: mapa ---
-        self.mapa_view = QWebEngineView()
-        self._render_mapa_vacio()
+        # --- Panel derecho: el mapa se abre en el navegador (evita problemas
+        # de renderizado embebido con drivers de video incompatibles) ---
+        panel_mapa = QVBoxLayout()
+        titulo_mapa = QLabel("<h3>Mapa de rutas</h3>")
+        panel_mapa.addWidget(titulo_mapa)
+        info_mapa = QLabel(
+            "El mapa se abre automáticamente en tu navegador (Chrome/Edge)\n"
+            "cada vez que presionas 'Optimizar rutas'."
+        )
+        panel_mapa.addWidget(info_mapa)
+        btn_reabrir = QPushButton("🌍 Volver a abrir el último mapa en el navegador")
+        btn_reabrir.clicked.connect(self._reabrir_mapa)
+        panel_mapa.addWidget(btn_reabrir)
+        panel_mapa.addStretch()
+        self.label_estado_mapa = QLabel("")
+        self.label_estado_mapa.setWordWrap(True)
+        panel_mapa.addWidget(self.label_estado_mapa)
+        panel_mapa_widget = QWidget()
+        panel_mapa_widget.setLayout(panel_mapa)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(panel_izq_widget)
-        splitter.addWidget(self.mapa_view)
-        splitter.setSizes([480, 600])
+        splitter.addWidget(panel_mapa_widget)
+        splitter.setSizes([700, 400])
         layout.addWidget(splitter)
-
-    def _render_mapa_vacio(self):
-        m = folium.Map(location=[18.4655, -69.8977], zoom_start=11)
-        self._mostrar_mapa(m)
+        self._ultimo_mapa_path = None
 
     def _mostrar_mapa(self, mapa: folium.Map):
         import logging
         tmp_path = os.path.join(tempfile.gettempdir(), "mapa_rutas.html")
         mapa.save(tmp_path)
-        logging.info(f"[Rutas] Cargando mapa desde: {tmp_path}")
-        self.mapa_view.loadFinished.connect(
-            lambda ok: logging.info(f"[Rutas] Carga de mapa {'exitosa' if ok else 'FALLIDA'}")
+        self._ultimo_mapa_path = tmp_path
+        logging.info(f"[Rutas] Guardado mapa en: {tmp_path}")
+        webbrowser.open(f"file://{tmp_path}")
+        self.label_estado_mapa.setText(
+            f"✅ Mapa abierto en tu navegador.\nSi no ves la pestaña, revisa que no "
+            f"se haya bloqueado como ventana emergente.\n\nArchivo: {tmp_path}"
         )
-        self.mapa_view.load(f"file://{tmp_path}")
+
+    def _reabrir_mapa(self):
+        if self._ultimo_mapa_path and os.path.exists(self._ultimo_mapa_path):
+            webbrowser.open(f"file://{self._ultimo_mapa_path}")
+        else:
+            self.label_estado_mapa.setText(
+                "Todavía no se ha generado ningún mapa. Presiona 'Optimizar rutas' primero."
+            )
 
     def _fijar_deposito(self):
         deposito = PuntoRecoleccion(
@@ -1269,28 +1280,48 @@ class TabSocial(QWidget):
         panel_izq_widget = QWidget()
         panel_izq_widget.setLayout(panel_izq)
 
-        self.mapa_view = QWebEngineView()
-        self._render_mapa_vacio()
+        panel_mapa = QVBoxLayout()
+        panel_mapa.addWidget(QLabel("<h3>Mapa de calor</h3>"))
+        panel_mapa.addWidget(QLabel(
+            "El mapa se abre automáticamente en tu navegador (Chrome/Edge)\n"
+            "cada vez que generas un mapa de calor."
+        ))
+        btn_reabrir = QPushButton("🌍 Volver a abrir el último mapa en el navegador")
+        btn_reabrir.clicked.connect(self._reabrir_mapa)
+        panel_mapa.addWidget(btn_reabrir)
+        panel_mapa.addStretch()
+        self.label_estado_mapa = QLabel("")
+        self.label_estado_mapa.setWordWrap(True)
+        panel_mapa.addWidget(self.label_estado_mapa)
+        panel_mapa_widget = QWidget()
+        panel_mapa_widget.setLayout(panel_mapa)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(panel_izq_widget)
-        splitter.addWidget(self.mapa_view)
-        splitter.setSizes([420, 700])
+        splitter.addWidget(panel_mapa_widget)
+        splitter.setSizes([500, 400])
         layout.addWidget(splitter)
-
-    def _render_mapa_vacio(self):
-        m = folium.Map(location=[18.4655, -69.8977], zoom_start=11)
-        self._mostrar_mapa(m)
+        self._ultimo_mapa_path = None
 
     def _mostrar_mapa(self, mapa: folium.Map):
         import os, tempfile, logging
         tmp_path = os.path.join(tempfile.gettempdir(), "mapa_calor_social.html")
         mapa.save(tmp_path)
-        logging.info(f"[Social] Cargando mapa desde: {tmp_path}")
-        self.mapa_view.loadFinished.connect(
-            lambda ok: logging.info(f"[Social] Carga de mapa {'exitosa' if ok else 'FALLIDA'}")
+        self._ultimo_mapa_path = tmp_path
+        logging.info(f"[Social] Guardado mapa en: {tmp_path}")
+        webbrowser.open(f"file://{tmp_path}")
+        self.label_estado_mapa.setText(
+            f"✅ Mapa abierto en tu navegador.\nSi no ves la pestaña, revisa que no "
+            f"se haya bloqueado como ventana emergente.\n\nArchivo: {tmp_path}"
         )
-        self.mapa_view.load(f"file://{tmp_path}")
+
+    def _reabrir_mapa(self):
+        if self._ultimo_mapa_path and os.path.exists(self._ultimo_mapa_path):
+            webbrowser.open(f"file://{self._ultimo_mapa_path}")
+        else:
+            self.label_estado_mapa.setText(
+                "Todavía no se ha generado ningún mapa. Genera uno primero con los botones de arriba."
+            )
 
     def _generar_mapa(self, tipo: str):
         zonas = self.tab_generacion.proyecto.zonas_georreferenciadas()
@@ -1442,10 +1473,10 @@ def main():
     sys.excepthook = manejar_excepcion_no_capturada
 
     logging.info("Iniciando aplicación...")
-    logging.info(f"QTWEBENGINEPROCESS_PATH: {os.environ.get('QTWEBENGINEPROCESS_PATH', '(no definido)')}")
 
-    # Segundo respaldo: fuerza a Qt (no a Chromium, sino al widget que lo
-    # aloja) a usar un contexto OpenGL por software si el hardware falla.
+    # Segundo respaldo: fuerza a Qt a usar un contexto OpenGL por software
+    # si el hardware falla (no debería hacer falta ya que el mapa ahora se
+    # abre en el navegador del sistema, pero no está de más dejarlo).
     QApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)
 
     app = QApplication(sys.argv)

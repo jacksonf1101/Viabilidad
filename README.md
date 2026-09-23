@@ -12,8 +12,8 @@ viabilidad de manejo de residuos:
    CRÍTICO) y sugerencia de camiones adicionales.
 3. **Optimización de rutas** — calcula las rutas de recolección más
    eficientes con restricción de capacidad por camión (algoritmo
-   CVRP vía Google OR-Tools), mostrando el resultado en un mapa real
-   interactivo (Leaflet/Folium) embebido en la aplicación.
+   CVRP vía Google OR-Tools). El mapa resultante (Leaflet/OpenStreetMap)
+   se abre automáticamente en tu navegador predeterminado.
 4. **Económico y Financiero** — costo por tonelada, ingresos por
    venta de reciclables y biogás, simulación de tarifa de aseo
    (equilibrio y con margen), balance mensual y retorno de inversión
@@ -21,8 +21,8 @@ viabilidad de manejo de residuos:
 5. **Ambiental** — CO₂ evitado por reciclaje y por optimización de
    rutas; lixiviados (balance hídrico simplificado) y gases de
    relleno sanitario (modelo LandGEM de la EPA).
-6. **Social y Demográfico** — mapas de calor interactivos que
-   muestran qué zonas generan más residuos o tienen menor tasa de
+6. **Social y Demográfico** — mapas de calor (abiertos en tu navegador)
+   que muestran qué zonas generan más residuos o tienen menor tasa de
    reciclaje, con ranking para priorizar campañas educativas.
 
 Los seis módulos están **conectados entre sí**: la generación de
@@ -97,6 +97,22 @@ si los tienes, o dejo los valores de referencia para RD si no.
 - El "tráfico" actual se aproxima con una velocidad promedio fija
   (25 km/h). Para tráfico en tiempo real se necesita una API paga
   (Google, TomTom, HERE) — lo dejo como siguiente iteración.
+
+### Sobre los mapas (rutas y calor)
+Los mapas **se abren en tu navegador predeterminado** (Chrome, Edge,
+Firefox...) en vez de mostrarse dentro de la ventana del programa. Esta
+decisión fue deliberada: la alternativa (un mapa embebido con
+QtWebEngine/Chromium) depende de la aceleración por GPU de cada PC, y en
+varias máquinas con drivers de video limitados el mapa cargaba pero
+quedaba en blanco, sin ningún error visible. Abrirlo en el navegador del
+sistema es 100% confiable porque usa el motor de renderizado que ya
+funciona en esa PC — y de paso, el `.exe` queda más liviano y rápido de
+instalar al no tener que empaquetar un Chromium completo.
+
+Cada vez que optimizas rutas o generas un mapa de calor, se abre una
+pestaña nueva del navegador automáticamente. El botón "Volver a abrir
+el último mapa" (en cada pestaña) permite reabrirlo sin tener que
+recalcular, por si cerraste la pestaña del navegador sin querer.
 
 ---
 
