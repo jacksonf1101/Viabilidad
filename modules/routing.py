@@ -99,6 +99,32 @@ def construir_matriz_distancias(puntos: List[PuntoRecoleccion], usar_osrm: bool 
     return dist_km, dur_min, "Estimado (línea recta x1.3, sin conexión a OSRM)"
 
 
+def obtener_geometria_ruta(
+    secuencia_lat_lon: List[Tuple[float, float]], base_url: str = "http://router.project-osrm.org"
+) -> Optional[List[Tuple[float, float]]]:
+    """
+    Pide a OSRM el trazado real (siguiendo calles) para una secuencia ordenada
+    de puntos (lat, lon) — la ruta completa de un solo camión, en orden de
+    visita. Devuelve una lista de (lat, lon) que sigue las calles reales,
+    lista para dibujar con folium.PolyLine. Devuelve None si OSRM no está
+    disponible o falla (el llamador debe usar línea recta como respaldo).
+    """
+    if requests is None or len(secuencia_lat_lon) < 2:
+        return None
+    try:
+        coords = ";".join(f"{lon},{lat}" for lat, lon in secuencia_lat_lon)
+        url = f"{base_url}/route/v1/driving/{coords}?overview=full&geometries=geojson"
+        resp = requests.get(url, timeout=8)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != "Ok" or not data.get("routes"):
+            return None
+        geometria = data["routes"][0]["geometry"]["coordinates"]  # [[lon, lat], ...]
+        return [(lat, lon) for lon, lat in geometria]
+    except Exception:
+        return None
+
+
 @dataclass
 class ResultadoRuta:
     vehiculo: str

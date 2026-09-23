@@ -27,7 +27,7 @@ from modules.generation import (
     ProyectoGeneracion, ZonaResidencial, ZonaComercial, ZonaIndustrial
 )
 from modules.capacity import FlotaYPlanta, Camion, PlantaTransferencia
-from modules.routing import optimizar_rutas, PuntoRecoleccion
+from modules.routing import optimizar_rutas, obtener_geometria_ruta, PuntoRecoleccion
 from modules.financial import ProyectoFinanciero, CostoOperativo, MaterialReciclable
 from modules.environmental import (
     HuellaCarbono, MaterialEmisionEvitada, ParametrosLixiviado, ParametrosLandGEM,
@@ -672,7 +672,16 @@ class TabRutas(QWidget):
                         popup=f"{p.nombre} ({p.demanda_kg} kg) — {ruta.vehiculo}",
                         icon=folium.Icon(color=color),
                     ).add_to(m)
-            folium.PolyLine(coords, color=color, weight=4, opacity=0.8,
+
+            # Si hay conexión a OSRM, dibuja el trazado real por calles en
+            # vez de una línea recta entre los puntos.
+            coords_dibujo = coords
+            if self.usar_osrm.isChecked():
+                geometria = obtener_geometria_ruta(coords)
+                if geometria:
+                    coords_dibujo = geometria
+
+            folium.PolyLine(coords_dibujo, color=color, weight=4, opacity=0.8,
                              tooltip=ruta.vehiculo).add_to(m)
 
             texto += (
