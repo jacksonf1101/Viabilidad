@@ -647,7 +647,11 @@ class TabRutas(QWidget):
 
         texto = f"Fuente de distancias: {resultado.fuente_distancias}\n\n"
         colores = ["red", "blue", "green", "purple", "orange", "darkred", "cadetblue"]
-        m = folium.Map(location=[self.puntos[0].lat, self.puntos[0].lon], zoom_start=12)
+        m = folium.Map(
+            location=[self.puntos[0].lat, self.puntos[0].lon], zoom_start=12,
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri — Source: Esri, HERE, Garmin, USGS, Intermap",
+        )
         folium.Marker(
             [self.puntos[0].lat, self.puntos[0].lon],
             popup=self.puntos[0].nombre,
@@ -1355,7 +1359,11 @@ class TabSocial(QWidget):
 
         centro_lat = sum(p[0] for p in puntos) / len(puntos)
         centro_lon = sum(p[1] for p in puntos) / len(puntos)
-        m = folium.Map(location=[centro_lat, centro_lon], zoom_start=12)
+        m = folium.Map(
+            location=[centro_lat, centro_lon], zoom_start=12,
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri — Source: Esri, HERE, Garmin, USGS, Intermap",
+        )
         HeatMap(puntos, radius=35, blur=25).add_to(m)
         for z in zonas:
             folium.CircleMarker(
